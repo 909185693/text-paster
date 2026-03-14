@@ -149,11 +149,18 @@ class ClipboardManager:
             # Simulate Ctrl+V paste
             controller = keyboard.Controller()
 
-            # Release all modifier keys first to avoid interference
+            # Release all modifier keys and common keys to avoid interference
             controller.release(Key.ctrl)
             controller.release(Key.alt)
             controller.release(Key.shift)
             controller.release(Key.cmd)
+
+            # Release common digit keys to avoid them being typed
+            for digit in '0123456789':
+                try:
+                    controller.release(KeyCode.from_char(digit))
+                except:
+                    pass
 
             # Short delay
             time.sleep(0.02)

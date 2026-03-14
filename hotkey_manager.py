@@ -55,6 +55,7 @@ class HotkeyManager:
         if isinstance(key, KeyCode):
             # 检查是否是字符键
             if hasattr(key, 'char') and key.char:
+                print(f"[DEBUG] KeyCode has char: {repr(key.char)}")
                 return ('char', key.char.lower())
             else:
                 # 检查VK值
@@ -64,6 +65,7 @@ class HotkeyManager:
                 }
                 if key.vk in vk_map:
                     return ('char', vk_map[key.vk])
+                print(f"[DEBUG] KeyCode has vk={key.vk} but no char")
                 return None
         elif isinstance(key, Key):
             # 检查修饰键
@@ -76,6 +78,7 @@ class HotkeyManager:
             elif key in (Key.cmd, Key.cmd_l, Key.cmd_r):
                 return ('modifier', 'win')
 
+        print(f"[DEBUG] Unrecognized key: {key}")
         return None
 
     def register_hotkeys(self, hotkey_map: dict):

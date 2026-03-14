@@ -138,41 +138,25 @@ class ClipboardManager:
 
     @staticmethod
     def paste_text(text: str):
-        """
-        Paste text using keyboard simulation with backspace to clean up
-        :param text: Text to paste
-        """
-        try:
-            # Save current clipboard
-            old_clipboard = pyperclip.paste()
-        except:
-            old_clipboard = None
-
         try:
             controller = keyboard.Controller()
 
-            # First, release all modifier keys and digit keys to stop autorepeat
-            controller.release(Key.ctrl)
-            controller.release(Key.alt)
-            controller.release(Key.shift)
-            controller.release(Key.cmd)
-
-            # Release digit keys to stop any autorepeat
+            # First, release all digit keys to stop autorepeat
             for digit in '0123456789':
                 try:
                     controller.release(KeyCode.from_char(digit))
                 except:
                     pass
 
-            # 增加延迟,确保所有按键都完全释放
-            time.sleep(0.1)
+            # Small delay to ensure digit keys are released
+            time.sleep(0.05)
 
             # Press Backspace once to delete the digit that was typed
             controller.press(Key.backspace)
             controller.release(Key.backspace)
 
-            # 增加延迟,确保 backspace 被正确处理
-            time.sleep(0.1)
+            # Delay to ensure backspace is processed
+            time.sleep(0.05)
 
             # Now set new content to clipboard
             pyperclip.copy(text)
@@ -181,10 +165,10 @@ class ClipboardManager:
             time.sleep(0.05)
 
             # Simulate Ctrl+V paste
-            controller.press(Key.ctrl)
+            # Note: User may still be holding Ctrl, so we just press V
+            # The system will detect Ctrl+V combination
             controller.press(KeyCode.from_char('v'))
             controller.release(KeyCode.from_char('v'))
-            controller.release(Key.ctrl)
 
             # Wait for paste to complete
             time.sleep(0.1)

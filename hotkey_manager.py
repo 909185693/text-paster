@@ -114,6 +114,7 @@ class HotkeyManager:
             self.pressed_keys.add(normalized)
             print(f"[PRESS] {key} -> {normalized}")
             print(f"  Pressed keys: {self.pressed_keys}")
+            print(f"  Last triggered: {self.last_triggered_main_key}")
 
             # 检查是否有快捷键匹配
             for hotkey_str, hotkey_data in self.hotkey_callbacks.items():
@@ -134,15 +135,20 @@ class HotkeyManager:
                     callback()
                     return  # 只触发一次就返回
 
-            # 简化模式：如果按住的是修饰键和主键，且之前触发过完整组合
+            # 简化模式：按住 Ctrl+Alt，然后按数字键可以触发对应的快捷键
+            # 触发条件：
+            # 1. 当前按下的键是字符键
+            # 2. 之前触发过完整组合（last_triggered_main_key 不为 None）
+            # 3. 当前按下的修饰键包含 Ctrl+Alt
+            # 4. 按下的键对应的快捷键有相同的修饰键（Ctrl+Alt）
             if normalized[0] == 'char' and self.last_triggered_main_key is not None:
-                # 检查当前按下的键组合是否对应某个快捷键
                 current_modifiers = {k for k in self.pressed_keys if k[0] == 'modifier'}
                 current_main = {k for k in self.pressed_keys if k[0] == 'char'}
 
-                # 简化模式必须包含完整的修饰键（ctrl+alt）
+                # 简化模式必须包含 Ctrl+Alt 修饰键
                 required_modifiers = {('modifier', 'ctrl'), ('modifier', 'alt')}
                 if not required_modifiers.issubset(current_modifiers):
+                    print(f"[SIMPLIFIED] Skipped: modifiers {current_modifiers} do not contain Ctrl+Alt")
                     return
 
                 for hotkey_str, hotkey_data in self.hotkey_callbacks.items():
@@ -150,7 +156,7 @@ class HotkeyManager:
                     hotkey_modifiers = {k for k in parsed_hotkey if k[0] == 'modifier'}
                     hotkey_main = {k for k in parsed_hotkey if k[0] == 'char'}
 
-                    # 如果修饰键和主键都匹配
+                    # 如果修饰键匹配（都是 Ctrl+Alt）且主键匹配
                     if current_modifiers == hotkey_modifiers and current_main == hotkey_main:
                         print(f"[TRIGGERED] Hotkey (simplified): {hotkey_str}")
                         self.last_triggered_main_key = list(current_main)[0] if current_main else None
@@ -170,12 +176,20 @@ class HotkeyManager:
             if normalized and normalized in self.pressed_keys:
                 self.pressed_keys.remove(normalized)
 
-                # 当所有键都释放时，清除状态
-                if not self.pressed_keys:
-                    self.last_triggered_main_key = None
+                # 检查是否释放了 Ctrl 或 Alt
+                # 如果释放了 Ctrl 或 Alt，说明简化模式应该失效
+                if normalized[0] == 'modifier' and normalized[1] in ('ctrl', 'alt'):
+                    current_modifiers = {k for k in self.pressed_keys if k[0] == 'modifier'}
+                    # 如果 Ctrl 或 Alt 都不在了，清除简化模式状态
+                    has_ctrl = any(k[1] == 'ctrl' for k in current_modifiers)
+                    has_alt = any(k[1] == 'alt' for k in current_modifiers)
+                    if not (has_ctrl and has_alt):
+                        self.last_triggered_main_key = None
+                        print(f"[SIMPLIFIED MODE] Disabled - Ctrl or Alt released")
 
                 print(f"[RELEASE] {key} -> {normalized}")
                 print(f"  Pressed keys: {self.pressed_keys}")
+                print(f"  Last triggered: {self.last_triggered_main_key}")
         except Exception as e:
             print(f"[ERROR] on_release error: {e}")
 

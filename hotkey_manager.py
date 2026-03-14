@@ -144,7 +144,7 @@ class ClipboardManager:
             pyperclip.copy(text)
 
             # Wait for clipboard to update
-            time.sleep(0.05)
+            time.sleep(0.1)
 
             # Simulate Ctrl+V paste
             controller = keyboard.Controller()
@@ -162,8 +162,8 @@ class ClipboardManager:
                 except:
                     pass
 
-            # Short delay
-            time.sleep(0.02)
+            # Longer delay to ensure key events are processed
+            time.sleep(0.05)
 
             # Press and release Ctrl+V
             controller.press(Key.ctrl)
@@ -172,7 +172,7 @@ class ClipboardManager:
             controller.release(Key.ctrl)
 
             # Wait for paste to complete
-            time.sleep(0.1)
+            time.sleep(0.15)
 
             print(f"[OK] Pasted text: {text[:30]}...")
 

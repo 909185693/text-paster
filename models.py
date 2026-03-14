@@ -5,6 +5,8 @@ import json
 from dataclasses import dataclass, asdict
 from typing import List, Optional
 from pathlib import Path
+import os
+import sys
 
 
 @dataclass
@@ -28,7 +30,17 @@ class ConfigManager:
 
     def __init__(self, config_path: str = None):
         if config_path is None:
-            config_path = Path(__file__).parent / "config.json"
+            # 使用用户目录保存配置,避免打包后路径问题
+            if getattr(sys, 'frozen', False):
+                # 打包后的 EXE
+                config_dir = Path.home() / '.text-paster'
+            else:
+                # 开发环境
+                config_dir = Path(__file__).parent
+
+            config_dir.mkdir(exist_ok=True)
+            config_path = config_dir / "config.json"
+
         self.config_path = Path(config_path)
         self.items: List[TextItem] = []
         self.load()

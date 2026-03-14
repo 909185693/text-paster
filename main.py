@@ -22,6 +22,8 @@ class TextPasterApp:
         # 创建 GUI
         self.root = tk.Tk()
         self.gui = TextPasterGUI(self.root)
+        # 设置数据变更回调,重新加载快捷键
+        self.gui.on_data_changed = self.reload_hotkeys
 
         # 创建并启动系统托盘
         self.tray_manager = SystemTrayManager(
@@ -60,6 +62,19 @@ class TextPasterApp:
         for item in self.config_manager.items:
             if item.enabled:
                 print(f"[{item.hotkey:20s}] -> {item.name}")
+
+    def reload_hotkeys(self):
+        """重新加载快捷键"""
+        print("\n[RELOAD] Reloading hotkeys...")
+
+        # 停止旧的监听器
+        if self.hotkey_manager:
+            self.hotkey_manager.stop()
+
+        # 重新启动监听器
+        self.start_hotkey_listener()
+
+        print("[OK] Hotkeys reloaded\n")
 
     def paste_text(self, hotkey: str, text: str):
         """粘贴文本"""

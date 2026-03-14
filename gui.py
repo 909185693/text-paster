@@ -25,6 +25,7 @@ class TextPasterGUI:
         self.hotkey_callbacks = {}
         self.tray_manager = None
         self.capturing_hotkey = False
+        self.on_data_changed = None  # 数据变更回调
 
         self.setup_ui()
         self.refresh_item_list()
@@ -164,6 +165,10 @@ class TextPasterGUI:
                 self.config_manager.save()
                 self.refresh_item_list()
 
+                # 通知数据变更,重新加载快捷键
+                if self.on_data_changed:
+                    self.on_data_changed()
+
     def load_item_to_form(self, index: int):
         """加载条目到表单"""
         if 0 <= index < len(self.config_manager.items):
@@ -284,6 +289,10 @@ class TextPasterGUI:
         self.clear_form()
         self.status_var.set(f"已添加: {name}")
 
+        # 通知数据变更,重新加载快捷键
+        if self.on_data_changed:
+            self.on_data_changed()
+
     def update_item(self):
         """更新条目"""
         if self.selected_index is None:
@@ -309,6 +318,10 @@ class TextPasterGUI:
         self.refresh_item_list()
         self.status_var.set(f"已更新: {name}")
 
+        # 通知数据变更,重新加载快捷键
+        if self.on_data_changed:
+            self.on_data_changed()
+
     def remove_item(self):
         """删除条目"""
         if self.selected_index is None:
@@ -322,6 +335,10 @@ class TextPasterGUI:
             self.clear_form()
             self.status_var.set(f"已删除: {item.name}")
 
+            # 通知数据变更,重新加载快捷键
+            if self.on_data_changed:
+                self.on_data_changed()
+
     def enable_all(self):
         """全部启用"""
         for item in self.config_manager.items:
@@ -330,6 +347,10 @@ class TextPasterGUI:
         self.refresh_item_list()
         self.status_var.set("已全部启用")
 
+        # 通知数据变更,重新加载快捷键
+        if self.on_data_changed:
+            self.on_data_changed()
+
     def disable_all(self):
         """全部禁用"""
         for item in self.config_manager.items:
@@ -337,6 +358,10 @@ class TextPasterGUI:
         self.config_manager.save()
         self.refresh_item_list()
         self.status_var.set("已全部禁用")
+
+        # 通知数据变更,重新加载快捷键
+        if self.on_data_changed:
+            self.on_data_changed()
 
     def minimize_to_tray(self):
         """最小化到托盘"""

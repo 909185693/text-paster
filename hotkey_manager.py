@@ -19,7 +19,7 @@ class HotkeyManager:
         self.listener = None
         self.hotkey_callbacks = {}  # {hotkey_str: callback}
         self.pressed_keys = set()  # 当前按下的键
-        self.triggered_hotkeys = set()  # 当前会话中已触发的快捷键
+        self.last_triggered_hotkey = None  # 上次触发的快捷键
 
     def parse_hotkey(self, hotkey_str: str) -> list:
         """
@@ -111,10 +111,10 @@ class HotkeyManager:
             for hotkey_str, hotkey_data in self.hotkey_callbacks.items():
                 parsed_hotkey = hotkey_data['parsed']
                 if self.pressed_keys == set(parsed_hotkey):
-                    # 只在第一次按下时触发
-                    if hotkey_str not in self.triggered_hotkeys:
+                    # 检查是否与上次触发的快捷键不同，或者上次触发的是另一个快捷键
+                    if self.last_triggered_hotkey != hotkey_str:
                         print(f"[TRIGGERED] Hotkey: {hotkey_str}")
-                        self.triggered_hotkeys.add(hotkey_str)
+                        self.last_triggered_hotkey = hotkey_str
                         callback = hotkey_data['callback']
                         callback()
                     break
@@ -131,11 +131,10 @@ class HotkeyManager:
             if normalized and normalized in self.pressed_keys:
                 self.pressed_keys.remove(normalized)
 
-                # 只在有快捷键触发的情况下才清除标记
-                # 避免在粘贴过程中(Ctrl+V)清除状态
-                if not self.pressed_keys and self.triggered_hotkeys:
-                    self.triggered_hotkeys.clear()
-                    print(f"[CLEARED] All keys released, trigger state reset")
+                # 当所有键都释放时，清除上次触发记录
+                if not self.pressed_keys:
+                    self.last_triggered_hotkey = None
+                    print(f"[CLEARED] All keys released")
 
                 print(f"[RELEASE] {key} -> {normalized}")
                 print(f"  Pressed keys: {self.pressed_keys}")

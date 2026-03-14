@@ -163,14 +163,7 @@ class HotkeyManager:
         try:
             normalized = self.normalize_key(key)
             if normalized and normalized in self.pressed_keys:
-                # 判断是否是主键（非修饰键）
-                is_main_key = normalized[0] == 'char'
-
                 self.pressed_keys.remove(normalized)
-
-                # 如果释放的是主键，重置记录
-                if is_main_key:
-                    self.last_triggered_main_key = None
 
                 # 当所有键都释放时，清除状态
                 if not self.pressed_keys:

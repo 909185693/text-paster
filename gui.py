@@ -5,6 +5,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
 from typing import Optional, TYPE_CHECKING
 from models import ConfigManager, TextItem
+from pynput import keyboard
 
 if TYPE_CHECKING:
     from tray_manager import SystemTrayManager
@@ -23,6 +24,7 @@ class TextPasterGUI:
         self.selected_index = None
         self.hotkey_callbacks = {}
         self.tray_manager = None
+        self.capturing_hotkey = False
 
         self.setup_ui()
         self.refresh_item_list()
@@ -55,9 +57,11 @@ class TextPasterGUI:
 
         # 快捷键输入
         ttk.Label(add_frame, text="快捷键:").grid(row=0, column=2, sticky=tk.W, padx=(0, 5))
-        self.hotkey_entry = ttk.Entry(add_frame, width=20)
-        self.hotkey_entry.grid(row=0, column=3, padx=(0, 10))
-        self.hotkey_entry.insert(0, "ctrl+alt+")
+        hotkey_input_frame = ttk.Frame(add_frame)
+        hotkey_input_frame.grid(row=0, column=3, padx=(0, 10))
+        self.hotkey_entry = ttk.Entry(hotkey_input_frame, width=20)
+        self.hotkey_entry.pack(side=tk.LEFT)
+        ttk.Button(hotkey_input_frame, text="拾取", width=6, command=self.start_hotkey_capture).pack(side=tk.LEFT, padx=(5, 0))
 
         # 文本内容
         ttk.Label(add_frame, text="文本内容:").grid(row=1, column=0, sticky=tk.NW, padx=(0, 5), pady=(10, 0))
@@ -180,6 +184,88 @@ class TextPasterGUI:
         self.hotkey_entry.insert(0, "ctrl+alt+")
         self.text_content.delete(1.0, tk.END)
         self.selected_index = None
+
+    def start_hotkey_capture(self):
+        """开始快捷键捕获"""
+        if self.capturing_hotkey:
+            return
+
+        self.capturing_hotkey = True
+        self.hotkey_entry.delete(0, tk.END)
+        self.hotkey_entry.insert(0, "按下快捷键...")
+        self.hotkey_entry.config(state=tk.DISABLED)
+
+        # 创建键盘监听器
+        self.pressed_keys = set()
+
+        def on_press(key):
+            if not self.capturing_hotkey:
+                return False
+
+            self.pressed_keys.add(key)
+
+            # 检测按键组合
+            modifiers = []
+            for k in self.pressed_keys:
+                if k in (keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
+                    modifiers.append('ctrl')
+                elif k in (keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r):
+                    modifiers.append('alt')
+                elif k in (keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r):
+                    modifiers.append('shift')
+                elif hasattr(k, 'char') and k.char:
+                    pass  # 字符键会在 on_release 中处理
+
+            return True
+
+        def on_release(key):
+            if not self.capturing_hotkey:
+                return False
+
+            self.pressed_keys.discard(key)
+
+            # 构建快捷键字符串
+            hotkey_parts = []
+            for k in self.pressed_keys:
+                if k in (keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
+                    hotkey_parts.append('ctrl')
+                elif k in (keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r):
+                    hotkey_parts.append('alt')
+                elif k in (keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r):
+                    hotkey_parts.append('shift')
+                elif hasattr(k, 'char') and k.char:
+                    pass
+
+            # 检查是否所有修饰键都已释放,只留下一个主键
+            remaining_keys = []
+            for k in self.pressed_keys:
+                if k not in (keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r,
+                            keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r,
+                            keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r):
+                    remaining_keys.append(k)
+
+            # 如果释放的是修饰键且还有其他键,继续等待
+            if len(self.pressed_keys) > 0:
+                return True
+
+            # 如果释放的是最后一个键(非修饰键),完成捕获
+            if hasattr(key, 'char') and key.char:
+                char = key.char.lower()
+                # 构建完整的快捷键
+                hotkey_str = '+'.join(modifiers + [char])
+                self.hotkey_entry.config(state=tk.NORMAL)
+                self.hotkey_entry.delete(0, tk.END)
+                self.hotkey_entry.insert(0, hotkey_str)
+                self.capturing_hotkey = False
+                self.status_var.set(f"已捕获快捷键: {hotkey_str}")
+                return False
+
+            return True
+
+        # 启动监听器
+        self.listener = keyboard.Listener(on_press=on_press, on_release=on_release)
+        self.listener.start()
+        self.status_var.set("请按下要设置的快捷键组合...")
 
     def add_item(self):
         """添加条目"""

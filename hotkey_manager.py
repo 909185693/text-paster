@@ -129,11 +129,11 @@ class HotkeyManager:
         try:
             normalized = self.normalize_key(key)
             if normalized and normalized in self.pressed_keys:
-                is_main_key = normalized[0] == 'char'  # 判断是否是主键(非修饰键)
                 self.pressed_keys.remove(normalized)
 
-                # 当所有键都释放时,清除触发标记
-                if not self.pressed_keys:
+                # 只在有快捷键触发的情况下才清除标记
+                # 避免在粘贴过程中(Ctrl+V)清除状态
+                if not self.pressed_keys and self.triggered_hotkeys:
                     self.triggered_hotkeys.clear()
                     print(f"[CLEARED] All keys released, trigger state reset")
 

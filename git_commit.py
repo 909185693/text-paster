@@ -1,3 +1,3 @@
 import subprocess
 subprocess.run(['git', 'add', '-A'])
-subprocess.run(['git', 'commit', '-m', 'fix: 在粘贴前使用Backspace删除已输入的数字键'])
+subprocess.run(['git', 'commit', '-m', 'fix: 使用Windows API WM_PASTE消息粘贴,完全避免数字键输入干扰'])

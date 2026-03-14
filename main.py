@@ -88,7 +88,6 @@ class TextPasterApp:
         try:
             # 获取当前激活窗口
             import win32gui
-            from pynput.keyboard import Key, Controller
 
             foreground_window = win32gui.GetForegroundWindow()
 
@@ -100,14 +99,6 @@ class TextPasterApp:
 
             # 短暂延迟确保窗口获得焦点
             time.sleep(0.05)
-
-            # 在粘贴前先删除可能已经输入的数字
-            controller = Controller()
-            controller.press(Key.backspace)
-            controller.release(Key.backspace)
-
-            # 短暂延迟
-            time.sleep(0.02)
 
             # 粘贴文本
             self.clipboard_manager.paste_text(text)

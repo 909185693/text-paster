@@ -130,7 +130,7 @@ class ClipboardManager:
     @staticmethod
     def paste_text(text: str):
         """
-        Paste text
+        Paste text using Windows API to avoid key input interference
         :param text: Text to paste
         """
         try:
@@ -146,35 +146,56 @@ class ClipboardManager:
             # Wait for clipboard to update
             time.sleep(0.1)
 
-            # Simulate Ctrl+V paste
-            controller = keyboard.Controller()
+            # Use Windows API to paste (send WM_PASTE message)
+            import ctypes
+            import win32gui
+            import win32con
 
-            # Release all modifier keys and common keys to avoid interference
-            controller.release(Key.ctrl)
-            controller.release(Key.alt)
-            controller.release(Key.shift)
-            controller.release(Key.cmd)
+            # Get foreground window
+            hwnd = win32gui.GetForegroundWindow()
 
-            # Release common digit keys to avoid them being typed
-            for digit in '0123456789':
-                try:
-                    controller.release(KeyCode.from_char(digit))
-                except:
-                    pass
+            # Find the window that actually receives keyboard input
+            # (usually a child window like an edit control)
+            try:
+                # Get the thread of the foreground window
+                thread_id = ctypes.windll.user32.GetWindowThreadProcessId(hwnd, None)
 
-            # Longer delay to ensure key events are processed
-            time.sleep(0.05)
+                # Get the window with focus
+                focused_hwnd = ctypes.windll.user32.GetFocus()
 
-            # Press and release Ctrl+V
-            controller.press(Key.ctrl)
-            controller.press(KeyCode.from_char('v'))
-            controller.release(KeyCode.from_char('v'))
-            controller.release(Key.ctrl)
+                if focused_hwnd:
+                    hwnd = focused_hwnd
+            except:
+                pass
+
+            # Send WM_PASTE message
+            win32gui.PostMessage(hwnd, win32con.WM_PASTE, 0, 0)
 
             # Wait for paste to complete
-            time.sleep(0.15)
+            time.sleep(0.1)
 
             print(f"[OK] Pasted text: {text[:30]}...")
 
         except Exception as e:
             print(f"[ERROR] Paste failed: {e}")
+            # Fallback to keyboard simulation if Windows API fails
+            try:
+                controller = keyboard.Controller()
+
+                # Release all modifier keys
+                controller.release(Key.ctrl)
+                controller.release(Key.alt)
+                controller.release(Key.shift)
+                controller.release(Key.cmd)
+
+                time.sleep(0.05)
+
+                # Press and release Ctrl+V
+                controller.press(Key.ctrl)
+                controller.press(KeyCode.from_char('v'))
+                controller.release(KeyCode.from_char('v'))
+                controller.release(Key.ctrl)
+
+                time.sleep(0.1)
+            except:
+                pass

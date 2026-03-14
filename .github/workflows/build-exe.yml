@@ -35,15 +35,16 @@ jobs:
         name: text-paster-windows
         path: dist/text-paster.exe
 
-    - name: Create Release
+    - name: Create Prebuilt Release
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: softprops/action-gh-release@v1
       with:
         files: dist/text-paster.exe
-        tag_name: prebuilt-${{ github.run_number }}
-        name: Prebuilt Release ${{ github.run_number }}
+        tag_name: prebuilt
+        name: Prebuilt Release
         draft: false
-        prerelease: false
-        generate_release_notes: true
+        prerelease: true
+        body: "Latest prebuilt version of text-paster.exe"
+        replace: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -19,6 +19,7 @@ class HotkeyManager:
         self.hotkey_map = {}  # {hotkey_str: callback}
         self.pressed_keys = set()  # 当前按下的键
         self.triggered_hotkeys = set()  # 本次按键周期已触发的快捷键
+        self._is_pasting = False  # 是否正在粘贴（忽略模拟的按键）
 
     def register_hotkeys(self, hotkey_map: dict):
         """
@@ -31,6 +32,10 @@ class HotkeyManager:
     def on_press(self, key):
         """Key press event handler"""
         try:
+            # 如果正在粘贴，忽略模拟的按键
+            if self._is_pasting:
+                return
+
             # 规范化按键
             normalized = self._normalize_key(key)
             if normalized is None:
@@ -49,6 +54,13 @@ class HotkeyManager:
                     if hotkey_str not in self.triggered_hotkeys:
                         print(f"[TRIGGERED] Hotkey: {hotkey_str}")
                         self.triggered_hotkeys.add(hotkey_str)
+
+                        # 关键：立即从 pressed_keys 中移除字符键，防止重复检测
+                        # 但保留修饰键，这样用户可以按住修饰键继续触发其他快捷键
+                        for pk in list(self.pressed_keys):
+                            if pk[0] == 'char':
+                                self.pressed_keys.remove(pk)
+
                         callback()
                     break
 
@@ -132,13 +144,23 @@ class HotkeyManager:
             self.listener.stop()
             print("[OK] Hotkey listener stopped")
 
+    def set_pasting(self, is_pasting: bool):
+        """Set pasting flag to ignore simulated keys"""
+        self._is_pasting = is_pasting
+
 
 class ClipboardManager:
     """Clipboard Manager"""
 
-    @staticmethod
-    def paste_text(text: str):
+    def __init__(self, hotkey_manager=None):
+        self.hotkey_manager = hotkey_manager
+
+    def paste_text(self, text: str):
         try:
+            # 设置粘贴标志，防止监听器捕获模拟的按键
+            if self.hotkey_manager:
+                self.hotkey_manager.set_pasting(True)
+
             # Now set new content to clipboard
             pyperclip.copy(text)
 
@@ -152,12 +174,19 @@ class ClipboardManager:
             controller.release(KeyCode.from_char('v'))
             controller.release(Key.ctrl)
 
-            # Wait for paste to complete
-            time.sleep(0.1)
+            # Wait for paste to complete AND give time for listener to see our simulated keys
+            time.sleep(0.3)
+
+            # 清除粘贴标志
+            if self.hotkey_manager:
+                self.hotkey_manager.set_pasting(False)
 
             print(f"[OK] Pasted text: {text[:30]}...")
 
         except Exception as e:
+            # 确保异常时也清除标志
+            if self.hotkey_manager:
+                self.hotkey_manager.set_pasting(False)
             print(f"[ERROR] Paste failed: {e}")
             import traceback
             traceback.print_exc()

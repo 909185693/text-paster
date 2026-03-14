@@ -17,7 +17,7 @@ class TextPasterApp:
     def __init__(self):
         self.config_manager = ConfigManager()
         self.hotkey_manager = None
-        self.clipboard_manager = ClipboardManager()
+        self.clipboard_manager = None  # 将在 start_hotkey_listener 中初始化
 
         # 创建 GUI，传入共享的 config_manager
         self.root = tk.Tk()
@@ -51,6 +51,9 @@ class TextPasterApp:
         # 初始化快捷键管理器
         self.hotkey_manager = HotkeyManager(None)
         self.hotkey_manager.register_hotkeys(hotkey_map)
+
+        # 初始化 ClipboardManager，传入 hotkey_manager
+        self.clipboard_manager = ClipboardManager(self.hotkey_manager)
 
         # 在单独的线程中启动监听
         thread = threading.Thread(target=self.hotkey_manager.start, daemon=True)

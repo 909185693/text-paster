@@ -19,7 +19,6 @@ class HotkeyManager:
         self.listener = None
         self.hotkey_callbacks = {}  # {hotkey_str: callback}
         self.pressed_keys = set()  # 当前按下的键
-        self.last_triggered_hotkey = None  # 上次触发的快捷键
 
     def parse_hotkey(self, hotkey_str: str) -> list:
         """
@@ -111,12 +110,10 @@ class HotkeyManager:
             for hotkey_str, hotkey_data in self.hotkey_callbacks.items():
                 parsed_hotkey = hotkey_data['parsed']
                 if self.pressed_keys == set(parsed_hotkey):
-                    # 检查是否与上次触发的快捷键不同，或者上次触发的是另一个快捷键
-                    if self.last_triggered_hotkey != hotkey_str:
-                        print(f"[TRIGGERED] Hotkey: {hotkey_str}")
-                        self.last_triggered_hotkey = hotkey_str
-                        callback = hotkey_data['callback']
-                        callback()
+                    # 每次按下都触发，像 Ctrl+V 一样
+                    print(f"[TRIGGERED] Hotkey: {hotkey_str}")
+                    callback = hotkey_data['callback']
+                    callback()
                     break
 
         except Exception as e:
@@ -130,11 +127,6 @@ class HotkeyManager:
             normalized = self.normalize_key(key)
             if normalized and normalized in self.pressed_keys:
                 self.pressed_keys.remove(normalized)
-
-                # 当所有键都释放时，清除上次触发记录
-                if not self.pressed_keys:
-                    self.last_triggered_hotkey = None
-                    print(f"[CLEARED] All keys released")
 
                 print(f"[RELEASE] {key} -> {normalized}")
                 print(f"  Pressed keys: {self.pressed_keys}")

@@ -19,6 +19,7 @@ class HotkeyManager:
         self.listener = None
         self.hotkey_callbacks = {}  # {hotkey_str: callback}
         self.pressed_keys = set()  # 当前按下的键
+        self.last_triggered_main_key = None  # 上次触发的主键（如 '1', '2' 等）
 
     def parse_hotkey(self, hotkey_str: str) -> list:
         """
@@ -109,12 +110,48 @@ class HotkeyManager:
             # 检查是否有快捷键匹配
             for hotkey_str, hotkey_data in self.hotkey_callbacks.items():
                 parsed_hotkey = hotkey_data['parsed']
+
+                # 找到快捷键中的主键（非修饰键）
+                main_key = None
+                modifiers = []
+                for pk in parsed_hotkey:
+                    if pk[0] == 'char':
+                        main_key = pk
+                    elif pk[0] == 'modifier':
+                        modifiers.append(pk)
+
+                # 情况1: 完整的快捷键组合
                 if self.pressed_keys == set(parsed_hotkey):
-                    # 每次按下都触发，像 Ctrl+V 一样
                     print(f"[TRIGGERED] Hotkey: {hotkey_str}")
+                    self.last_triggered_main_key = main_key
                     callback = hotkey_data['callback']
                     callback()
                     break
+
+                # 情况2: 只按主键，但修饰键还在按下，且上次触发过完整组合
+                elif (normalized == main_key and
+                      normalized[0] == 'char' and
+                      self.last_triggered_main_key is not None and
+                      all(m in self.pressed_keys for m in modifiers)):
+                    # 检查是否有对应的快捷键
+                    candidate_hotkey = None
+                    for hk, hd in self.hotkey_callbacks.items():
+                        hk_parsed = hd['parsed']
+                        hk_main = None
+                        for pk in hk_parsed:
+                            if pk[0] == 'char':
+                                hk_main = pk
+                                break
+                        if hk_main == normalized:
+                            candidate_hotkey = hk
+                            break
+
+                    if candidate_hotkey:
+                        print(f"[TRIGGERED] Hotkey (simplified): {candidate_hotkey}")
+                        callback = self.hotkey_callbacks[candidate_hotkey]['callback']
+                        callback()
+                        self.last_triggered_main_key = normalized
+                        break
 
         except Exception as e:
             print(f"[ERROR] on_press error: {e}")
@@ -126,7 +163,18 @@ class HotkeyManager:
         try:
             normalized = self.normalize_key(key)
             if normalized and normalized in self.pressed_keys:
+                # 判断是否是主键（非修饰键）
+                is_main_key = normalized[0] == 'char'
+
                 self.pressed_keys.remove(normalized)
+
+                # 如果释放的是主键，重置记录
+                if is_main_key:
+                    self.last_triggered_main_key = None
+
+                # 当所有键都释放时，清除状态
+                if not self.pressed_keys:
+                    self.last_triggered_main_key = None
 
                 print(f"[RELEASE] {key} -> {normalized}")
                 print(f"  Pressed keys: {self.pressed_keys}")

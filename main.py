@@ -19,9 +19,9 @@ class TextPasterApp:
         self.hotkey_manager = None
         self.clipboard_manager = ClipboardManager()
 
-        # 创建 GUI
+        # 创建 GUI，传入共享的 config_manager
         self.root = tk.Tk()
-        self.gui = TextPasterGUI(self.root)
+        self.gui = TextPasterGUI(self.root, config_manager=self.config_manager)
         # 设置数据变更回调,重新加载快捷键
         self.gui.on_data_changed = self.reload_hotkeys
 
@@ -66,6 +66,10 @@ class TextPasterApp:
     def reload_hotkeys(self):
         """重新加载快捷键"""
         print("\n[RELOAD] Reloading hotkeys...")
+
+        # 重新加载配置文件
+        self.config_manager.load()
+        print(f"[RELOAD] Loaded {len(self.config_manager.items)} items from config")
 
         # 停止旧的监听器
         if self.hotkey_manager:

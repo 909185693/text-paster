@@ -14,13 +14,14 @@ if TYPE_CHECKING:
 class TextPasterGUI:
     """文本粘贴工具 GUI"""
 
-    def __init__(self, root):
+    def __init__(self, root, config_manager=None):
         self.root = root
         self.root.title("文本快速粘贴工具 v1.0")
         self.root.geometry("700x600")
         self.root.resizable(True, True)
 
-        self.config_manager = ConfigManager()
+        # 使用传入的 config_manager 或创建新的
+        self.config_manager = config_manager if config_manager else ConfigManager()
         self.selected_index = None
         self.hotkey_callbacks = {}
         self.tray_manager = None
@@ -393,7 +394,7 @@ class TextPasterGUI:
 def main():
     """主函数"""
     root = tk.Tk()
-    app = TextPasterGUI(root)
+    app = TextPasterGUI(root)  # 独立运行时创建自己的 config_manager
     root.mainloop()
 
 

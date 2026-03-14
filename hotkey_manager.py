@@ -20,6 +20,7 @@ class HotkeyManager:
         self.hotkey_callbacks = {}  # {hotkey_str: callback}
         self.pressed_keys = set()  # 当前按下的键
         self.triggered_hotkeys = set()  # 已触发的快捷键,防止重复触发
+        self.cooldown_until = {}  # 快捷键冷却时间 {hotkey_str: timestamp}
 
     def parse_hotkey(self, hotkey_str: str) -> list:
         """
@@ -113,10 +114,18 @@ class HotkeyManager:
             for hotkey_str, hotkey_data in self.hotkey_callbacks.items():
                 parsed_hotkey = hotkey_data['parsed']
                 if self.pressed_keys == set(parsed_hotkey):
+                    # 检查是否在冷却期内
+                    current_time = time.time()
+                    if hotkey_str in self.cooldown_until and current_time < self.cooldown_until[hotkey_str]:
+                        print(f"[COOLDOWN] {hotkey_str} is in cooldown")
+                        continue
+
                     # 检查是否已经触发过,防止重复触发
                     if hotkey_str not in self.triggered_hotkeys:
                         print(f"[TRIGGERED] Hotkey: {hotkey_str}")
                         self.triggered_hotkeys.add(hotkey_str)
+                        # 设置冷却时间 0.5秒
+                        self.cooldown_until[hotkey_str] = current_time + 0.5
                         callback = hotkey_data['callback']
                         callback()
                     break

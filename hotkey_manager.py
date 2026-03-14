@@ -96,6 +96,14 @@ class HotkeyManager:
             # 解析快捷键
             parsed = self.parse_hotkey(hotkey_str)
             if parsed:
+                # 检查是否有效的快捷键（必须至少有一个修饰键和一个字符键）
+                has_modifier = any(pk[0] == 'modifier' for pk in parsed)
+                has_char = any(pk[0] == 'char' for pk in parsed)
+
+                if not (has_modifier and has_char):
+                    print(f"[WARNING] Invalid hotkey (missing modifier or char): {hotkey_str} -> {parsed}")
+                    continue
+
                 self.hotkey_callbacks[hotkey_str] = {'callback': callback, 'parsed': parsed}
                 print(f"[DEBUG] Registered hotkey: {hotkey_str} -> {parsed}")
 

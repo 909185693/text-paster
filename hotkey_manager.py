@@ -19,6 +19,7 @@ class HotkeyManager:
         self.listener = None
         self.hotkey_callbacks = {}  # {hotkey_str: callback}
         self.pressed_keys = set()  # 当前按下的键
+        self.triggered_hotkeys = set()  # 已触发的快捷键,防止重复触发
 
     def parse_hotkey(self, hotkey_str: str) -> list:
         """
@@ -106,10 +107,13 @@ class HotkeyManager:
             for hotkey_str, hotkey_data in self.hotkey_callbacks.items():
                 parsed_hotkey = hotkey_data['parsed']
                 if self.pressed_keys == set(parsed_hotkey):
-                    print(f"[TRIGGERED] Hotkey: {hotkey_str}")
-                    callback = hotkey_data['callback']
-                    callback()
-                    break  # 防止重复触发
+                    # 检查是否已经触发过,防止重复触发
+                    if hotkey_str not in self.triggered_hotkeys:
+                        print(f"[TRIGGERED] Hotkey: {hotkey_str}")
+                        self.triggered_hotkeys.add(hotkey_str)
+                        callback = hotkey_data['callback']
+                        callback()
+                    break
 
         except Exception as e:
             print(f"[ERROR] on_press error: {e}")
@@ -122,6 +126,8 @@ class HotkeyManager:
             normalized = self.normalize_key(key)
             if normalized and normalized in self.pressed_keys:
                 self.pressed_keys.remove(normalized)
+                # 清除已触发标记,允许下次再触发
+                self.triggered_hotkeys.clear()
                 print(f"[RELEASE] {key} -> {normalized}")
                 print(f"  Pressed keys: {self.pressed_keys}")
         except Exception as e:

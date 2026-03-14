@@ -2,22 +2,28 @@
 
 block_cipher = None
 
+# 获取所有需要的模块
+import os
+import sys
+
 a = Analysis(
     ['main.py'],
-    pathex=[],
+    pathex=[os.getcwd()],
     binaries=[],
     datas=[],
     hiddenimports=[
         'pystray',
         'PIL',
         'PIL._tkinter_finder',
+        'pynput',
+        'pynput.keyboard',
+        'pynput.keyboard._win32',
+        'pynput.mouse',
+        'pynput.mouse._win32',
         'models',
         'hotkey_manager',
         'tray_manager',
-        'pynput.keyboard._win32',
-        'pynput.keyboard._xorg',
-        'pynput.mouse._win32',
-        'pynput.mouse._xorg',
+        'pyperclip',
     ],
     hookspath=[],
     hooksconfig={},

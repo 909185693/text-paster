@@ -113,45 +113,37 @@ class HotkeyManager:
 
                 # 找到快捷键中的主键（非修饰键）
                 main_key = None
-                modifiers = []
                 for pk in parsed_hotkey:
                     if pk[0] == 'char':
                         main_key = pk
-                    elif pk[0] == 'modifier':
-                        modifiers.append(pk)
+                        break
 
-                # 情况1: 完整的快捷键组合
+                # 检查是否满足快捷键组合
                 if self.pressed_keys == set(parsed_hotkey):
                     print(f"[TRIGGERED] Hotkey: {hotkey_str}")
                     self.last_triggered_main_key = main_key
                     callback = hotkey_data['callback']
                     callback()
-                    break
+                    return  # 只触发一次就返回
 
-                # 情况2: 只按主键，但修饰键还在按下，且上次触发过完整组合
-                elif (normalized == main_key and
-                      normalized[0] == 'char' and
-                      self.last_triggered_main_key is not None and
-                      all(m in self.pressed_keys for m in modifiers)):
-                    # 检查是否有对应的快捷键
-                    candidate_hotkey = None
-                    for hk, hd in self.hotkey_callbacks.items():
-                        hk_parsed = hd['parsed']
-                        hk_main = None
-                        for pk in hk_parsed:
-                            if pk[0] == 'char':
-                                hk_main = pk
-                                break
-                        if hk_main == normalized:
-                            candidate_hotkey = hk
-                            break
+            # 简化模式：如果按住的是修饰键和主键，且之前触发过完整组合
+            if normalized[0] == 'char' and self.last_triggered_main_key is not None:
+                # 检查当前按下的键组合是否对应某个快捷键
+                current_modifiers = {k for k in self.pressed_keys if k[0] == 'modifier'}
+                current_main = {k for k in self.pressed_keys if k[0] == 'char'}
 
-                    if candidate_hotkey:
-                        print(f"[TRIGGERED] Hotkey (simplified): {candidate_hotkey}")
-                        callback = self.hotkey_callbacks[candidate_hotkey]['callback']
+                for hotkey_str, hotkey_data in self.hotkey_callbacks.items():
+                    parsed_hotkey = hotkey_data['parsed']
+                    hotkey_modifiers = {k for k in parsed_hotkey if k[0] == 'modifier'}
+                    hotkey_main = {k for k in parsed_hotkey if k[0] == 'char'}
+
+                    # 如果修饰键和主键都匹配
+                    if current_modifiers == hotkey_modifiers and current_main == hotkey_main:
+                        print(f"[TRIGGERED] Hotkey (simplified): {hotkey_str}")
+                        self.last_triggered_main_key = list(current_main)[0] if current_main else None
+                        callback = hotkey_data['callback']
                         callback()
-                        self.last_triggered_main_key = normalized
-                        break
+                        return
 
         except Exception as e:
             print(f"[ERROR] on_press error: {e}")

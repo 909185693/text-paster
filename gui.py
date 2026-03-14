@@ -219,8 +219,35 @@ class TextPasterGUI:
                 key_name = 'alt'
             elif key in (keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r):
                 key_name = 'shift'
-            elif hasattr(key, 'char') and key.char:
-                # 移除 isprintable() 检查，直接使用所有字符键
+            elif hasattr(key, 'vk') and key.vk:
+                # 使用 Virtual Key Code 来识别按键
+                # 字母键 A-Z 的 VK 码是 65-90
+                if 65 <= key.vk <= 90:
+                    key_name = chr(key.vk + 32).lower()  # 转换为小写字母
+                # 数字键 0-9 的 VK 码是 48-57
+                elif 48 <= key.vk <= 57:
+                    key_name = str(key.vk - 48)
+                # 小键盘数字键的 VK 码是 96-105
+                elif 96 <= key.vk <= 105:
+                    key_name = str(key.vk - 96)
+                # 小键盘运算符
+                elif key.vk == 106:
+                    key_name = '*'
+                elif key.vk == 107:
+                    key_name = '+'
+                elif key.vk == 108:
+                    key_name = 'enter'
+                elif key.vk == 109:
+                    key_name = '-'
+                elif key.vk == 110:
+                    key_name = '.'
+                elif key.vk == 111:
+                    key_name = '/'
+                # 其他功能键（F1-F24 等）
+                elif 112 <= key.vk <= 135:
+                    key_name = f'f{key.vk - 111}'
+            elif hasattr(key, 'char') and key.char and key.char.isprintable():
+                # 对于没有 vk 的键（如一些特殊字符），使用 char
                 key_name = key.char.lower()
             elif hasattr(key, 'vk') and key.vk:
                 # 处理数字键 (VK 48-57: 0-9)

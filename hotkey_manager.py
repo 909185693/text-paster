@@ -84,19 +84,33 @@ class HotkeyManager:
     def _normalize_key(self, key):
         """规范化键对象用于比较"""
         if isinstance(key, KeyCode):
-            if hasattr(key, 'char') and key.char:
+            if hasattr(key, 'vk') and key.vk:
+                # 使用 Virtual Key Code 来识别按键
+                # 字母键 A-Z 的 VK 码是 65-90
+                if 65 <= key.vk <= 90:
+                    return ('char', chr(key.vk + 32).lower())  # 转换为小写字母
+                # 数字键 0-9 的 VK 码是 48-57
+                elif 48 <= key.vk <= 57:
+                    return ('char', str(key.vk - 48))
+                # 小键盘数字键的 VK 码是 96-105
+                elif 96 <= key.vk <= 105:
+                    return ('char', str(key.vk - 96))
+                # 小键盘运算符
+                elif key.vk == 106:
+                    return ('char', '*')
+                elif key.vk == 107:
+                    return ('char', '+')
+                elif key.vk == 108:
+                    return ('char', 'enter')
+                elif key.vk == 109:
+                    return ('char', '-')
+                elif key.vk == 110:
+                    return ('char', '.')
+                elif key.vk == 111:
+                    return ('char', '/')
+            elif hasattr(key, 'char') and key.char and key.char.isprintable():
+                # 对于没有 vk 的键（如一些特殊字符），使用 char
                 return ('char', key.char.lower())
-            elif hasattr(key, 'vk') and key.vk:
-                # VK值映射
-                vk_map = {
-                    49: '1', 50: '2', 51: '3', 52: '4', 53: '5',
-                    54: '6', 55: '7', 56: '8', 57: '9', 48: '0',
-                    96: '0', 97: '1', 98: '2', 99: '3', 100: '4',
-                    101: '5', 102: '6', 103: '7', 104: '8', 105: '9',
-                    106: '*', 107: '+', 109: '-', 110: '.', 111: '/'
-                }
-                if key.vk in vk_map:
-                    return ('char', vk_map[key.vk])
         elif isinstance(key, Key):
             if key in (Key.ctrl, Key.ctrl_l, Key.ctrl_r):
                 return ('modifier', 'ctrl')

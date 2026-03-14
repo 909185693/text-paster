@@ -132,6 +132,11 @@ class HotkeyManager:
                 current_modifiers = {k for k in self.pressed_keys if k[0] == 'modifier'}
                 current_main = {k for k in self.pressed_keys if k[0] == 'char'}
 
+                # 简化模式必须包含完整的修饰键（ctrl+alt）
+                required_modifiers = {('modifier', 'ctrl'), ('modifier', 'alt')}
+                if not required_modifiers.issubset(current_modifiers):
+                    return
+
                 for hotkey_str, hotkey_data in self.hotkey_callbacks.items():
                     parsed_hotkey = hotkey_data['parsed']
                     hotkey_modifiers = {k for k in parsed_hotkey if k[0] == 'modifier'}

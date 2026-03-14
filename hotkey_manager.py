@@ -103,6 +103,12 @@ class HotkeyManager:
             print(f"[PRESS] {key} -> {normalized}")
             print(f"  Pressed keys: {self.pressed_keys}")
 
+            # 只有在有修饰键按下时,才检查快捷键
+            # 防止单独按下主键时触发
+            has_modifier = any(k[0] == 'modifier' for k in self.pressed_keys)
+            if not has_modifier:
+                return
+
             # 检查是否有快捷键匹配
             for hotkey_str, hotkey_data in self.hotkey_callbacks.items():
                 parsed_hotkey = hotkey_data['parsed']
@@ -125,11 +131,13 @@ class HotkeyManager:
         try:
             normalized = self.normalize_key(key)
             if normalized and normalized in self.pressed_keys:
+                is_main_key = normalized[0] == 'char'  # 判断是否是主键(非修饰键)
                 self.pressed_keys.remove(normalized)
 
-                # 只有当所有键都释放后,才清除触发标记
-                if not self.pressed_keys:
+                # 如果释放的是主键,清除触发标记,允许下次触发
+                if is_main_key:
                     self.triggered_hotkeys.clear()
+                    print(f"[CLEARED] Triggered hotkeys after releasing main key")
 
                 print(f"[RELEASE] {key} -> {normalized}")
                 print(f"  Pressed keys: {self.pressed_keys}")

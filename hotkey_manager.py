@@ -19,8 +19,8 @@ class HotkeyManager:
         self.listener = None
         self.hotkey_callbacks = {}  # {hotkey_str: callback}
         self.pressed_keys = set()  # 当前按下的键
-        self.triggered_hotkeys = set()  # 已触发的快捷键,防止重复触发
-        self.cooldown_until = {}  # 快捷键冷却时间 {hotkey_str: timestamp}
+        self.last_triggered_hotkey = None  # 上次触发的快捷键
+        self.last_triggered_time = 0  # 上次触发时间
 
     def parse_hotkey(self, hotkey_str: str) -> list:
         """
@@ -114,18 +114,13 @@ class HotkeyManager:
             for hotkey_str, hotkey_data in self.hotkey_callbacks.items():
                 parsed_hotkey = hotkey_data['parsed']
                 if self.pressed_keys == set(parsed_hotkey):
-                    # 检查是否在冷却期内
+                    # 检查是否是新的一次按下（与上次触发间隔超过0.3秒）
                     current_time = time.time()
-                    if hotkey_str in self.cooldown_until and current_time < self.cooldown_until[hotkey_str]:
-                        print(f"[COOLDOWN] {hotkey_str} is in cooldown")
-                        continue
-
-                    # 检查是否已经触发过,防止重复触发
-                    if hotkey_str not in self.triggered_hotkeys:
+                    if (self.last_triggered_hotkey != hotkey_str or
+                        current_time - self.last_triggered_time > 0.3):
                         print(f"[TRIGGERED] Hotkey: {hotkey_str}")
-                        self.triggered_hotkeys.add(hotkey_str)
-                        # 设置冷却时间 0.5秒
-                        self.cooldown_until[hotkey_str] = current_time + 0.5
+                        self.last_triggered_hotkey = hotkey_str
+                        self.last_triggered_time = current_time
                         callback = hotkey_data['callback']
                         callback()
                     break
@@ -143,10 +138,10 @@ class HotkeyManager:
                 is_main_key = normalized[0] == 'char'  # 判断是否是主键(非修饰键)
                 self.pressed_keys.remove(normalized)
 
-                # 如果释放的是主键,清除触发标记,允许下次触发
+                # 如果释放的是主键,重置触发状态
                 if is_main_key:
-                    self.triggered_hotkeys.clear()
-                    print(f"[CLEARED] Triggered hotkeys after releasing main key")
+                    self.last_triggered_hotkey = None
+                    print(f"[CLEARED] Triggered state after releasing main key")
 
                 print(f"[RELEASE] {key} -> {normalized}")
                 print(f"  Pressed keys: {self.pressed_keys}")

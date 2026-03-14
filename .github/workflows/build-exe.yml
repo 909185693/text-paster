@@ -30,7 +30,7 @@ jobs:
         pyinstaller --onefile --windowed --name text-paster --hidden-import=pystray --hidden-import=PIL main.py
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: text-paster-windows
         path: dist/text-paster.exe

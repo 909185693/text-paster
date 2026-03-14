@@ -36,9 +36,9 @@ class TextPasterGUI:
 
     def setup_ui(self):
         """设置界面"""
-        # 顶部框架
+        # 顶部框架 - 支持扩展以适应窗口最大化
         top_frame = ttk.Frame(self.root, padding="10")
-        top_frame.pack(fill=tk.X)
+        top_frame.pack(fill=tk.BOTH, expand=True)
 
         # 标题
         title_label = ttk.Label(
@@ -92,10 +92,10 @@ class TextPasterGUI:
         self.tree.heading("name", text="分类")
         self.tree.heading("text_preview", text="文本预览")
 
-        self.tree.column("enabled", width=50, anchor=tk.CENTER)
-        self.tree.column("hotkey", width=120, anchor=tk.CENTER)
-        self.tree.column("name", width=150, anchor=tk.W)
-        self.tree.column("text_preview", width=300, anchor=tk.W)
+        self.tree.column("enabled", width=60, anchor=tk.CENTER, minwidth=60)
+        self.tree.column("hotkey", width=120, anchor=tk.CENTER, minwidth=120)
+        self.tree.column("name", width=150, anchor=tk.W, minwidth=100)
+        self.tree.column("text_preview", width=300, anchor=tk.W, minwidth=200)
 
         # 添加滚动条
         scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.tree.yview)
@@ -114,6 +114,7 @@ class TextPasterGUI:
 
         ttk.Button(bottom_frame, text="全部启用", command=self.enable_all).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(bottom_frame, text="全部禁用", command=self.disable_all).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(bottom_frame, text="刷新配置", command=self.refresh_config).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Label(bottom_frame, text=" | ").pack(side=tk.LEFT)
         ttk.Button(bottom_frame, text="最小化到托盘", command=self.minimize_to_tray).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(bottom_frame, text="退出", command=self.root.quit).pack(side=tk.LEFT)
@@ -380,6 +381,27 @@ class TextPasterGUI:
         # 通知数据变更,重新加载快捷键
         if self.on_data_changed:
             self.on_data_changed()
+
+    def refresh_config(self):
+        """刷新配置 - 重新从文件加载配置"""
+        try:
+            # 重新加载配置文件
+            self.config_manager.load()
+            # 刷新界面列表
+            self.refresh_item_list()
+            # 清空表单
+            self.clear_form()
+            # 更新状态栏
+            self.status_var.set("配置已刷新")
+
+            # 通知数据变更,重新加载快捷键
+            if self.on_data_changed:
+                self.on_data_changed()
+
+            messagebox.showinfo("成功", "配置已重新加载!")
+        except Exception as e:
+            messagebox.showerror("错误", f"刷新配置失败: {e}")
+            print(f"[ERROR] Refresh config failed: {e}")
 
     def minimize_to_tray(self):
         """最小化到托盘"""

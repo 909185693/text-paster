@@ -8,7 +8,7 @@ import time
 
 
 class HotkeyManager:
-    """Hotkey Manager - 手动实现快捷键检测"""
+    """Hotkey Manager - 标准组合键实现"""
 
     def __init__(self, on_hotkey_press):
         """
@@ -16,63 +16,75 @@ class HotkeyManager:
         :param on_hotkey_press: Callback when hotkey is pressed
         """
         self.on_hotkey_press = on_hotkey_press
-        self.listener = None
-        self.hotkey_callbacks = {}  # {hotkey_str: callback}
+        self.hotkey_map = {}  # {hotkey_str: callback}
         self.pressed_keys = set()  # 当前按下的键
+        self.triggered_hotkeys = set()  # 当前触发过的快捷键,防止重复触发
 
-    def parse_hotkey(self, hotkey_str: str) -> list:
+    def register_hotkeys(self, hotkey_map: dict):
         """
-        Parse hotkey string to list of keys (支持左右Ctrl/Alt)
-        :param hotkey_str: e.g., "ctrl+alt+1" or "ctrl+shift+a"
-        :return: List of key values for comparison
+        Register hotkeys
+        :param hotkey_map: {hotkey_str: callback}
         """
-        parts = [p.strip().lower() for p in hotkey_str.split('+')]
-        keys = []
+        self.hotkey_map = hotkey_map
+        print(f"[DEBUG] Registering {len(hotkey_map)} hotkeys...")
 
-        for part in parts:
-            if part == 'ctrl':
-                # 支持左Ctrl和右Ctrl
-                keys.append(('modifier', 'ctrl'))
-            elif part == 'alt':
-                # 支持左Alt、右Alt和AltGr
-                keys.append(('modifier', 'alt'))
-            elif part == 'shift':
-                keys.append(('modifier', 'shift'))
-            elif part == 'win' or part == 'cmd' or part == 'meta':
-                keys.append(('modifier', 'win'))
-            elif len(part) == 1:
-                # 字符键
-                keys.append(('char', part))
-            elif part.startswith('f') and part[1:].isdigit():
-                # F1-F12
-                keys.append(('key', f'f{part[1:]}'))
+    def on_press(self, key):
+        """Key press event handler"""
+        try:
+            # 规范化按键
+            normalized = self._normalize_key(key)
+            if normalized is None:
+                return
 
-        return keys
+            # 忽略已经按下的键(按键重复)
+            if normalized in self.pressed_keys:
+                return
 
-    def normalize_key(self, key):
-        """规范化键对象返回可比较的值"""
+            self.pressed_keys.add(normalized)
+
+            # 检查所有已注册的快捷键
+            for hotkey_str, callback in self.hotkey_map.items():
+                if self._check_hotkey(hotkey_str):
+                    # 防止重复触发同一个快捷键
+                    if hotkey_str not in self.triggered_hotkeys:
+                        self.triggered_hotkeys.add(hotkey_str)
+                        print(f"[TRIGGERED] Hotkey: {hotkey_str}")
+                        callback()
+                    break
+
+        except Exception as e:
+            print(f"[ERROR] on_press error: {e}")
+
+    def on_release(self, key):
+        """Key release event handler"""
+        try:
+            normalized = self._normalize_key(key)
+            if normalized and normalized in self.pressed_keys:
+                self.pressed_keys.remove(normalized)
+
+                # 如果所有键都释放了,清空已触发记录
+                if not self.pressed_keys:
+                    self.triggered_hotkeys.clear()
+        except Exception as e:
+            print(f"[ERROR] on_release error: {e}")
+
+    def _normalize_key(self, key):
+        """规范化键对象用于比较"""
         if isinstance(key, KeyCode):
-            # 检查是否是字符键
             if hasattr(key, 'char') and key.char:
-                print(f"[DEBUG] KeyCode has char: {repr(key.char)}")
                 return ('char', key.char.lower())
-            else:
-                # 检查VK值
+            elif hasattr(key, 'vk') and key.vk:
+                # VK值映射
                 vk_map = {
                     49: '1', 50: '2', 51: '3', 52: '4', 53: '5',
                     54: '6', 55: '7', 56: '8', 57: '9', 48: '0',
-                    # 小键盘数字键
                     96: '0', 97: '1', 98: '2', 99: '3', 100: '4',
                     101: '5', 102: '6', 103: '7', 104: '8', 105: '9',
-                    # 小键盘运算符
                     106: '*', 107: '+', 109: '-', 110: '.', 111: '/'
                 }
                 if key.vk in vk_map:
                     return ('char', vk_map[key.vk])
-                print(f"[DEBUG] KeyCode has vk={key.vk} but no char")
-                return None
         elif isinstance(key, Key):
-            # 检查修饰键
             if key in (Key.ctrl, Key.ctrl_l, Key.ctrl_r):
                 return ('modifier', 'ctrl')
             elif key in (Key.alt, Key.alt_l, Key.alt_r, Key.alt_gr):
@@ -80,83 +92,38 @@ class HotkeyManager:
             elif key in (Key.shift, Key.shift_l, Key.shift_r):
                 return ('modifier', 'shift')
             elif key in (Key.cmd, Key.cmd_l, Key.cmd_r):
-                return ('modifier', 'win')
-
-        print(f"[DEBUG] Unrecognized key: {key}")
+                return ('modifier', 'cmd')
         return None
 
-    def register_hotkeys(self, hotkey_map: dict):
+    def _check_hotkey(self, hotkey_str):
         """
-        Register hotkeys
-        :param hotkey_map: {hotkey_str: callback}
+        检查当前按下的键是否匹配快捷键组合
         """
-        self.hotkey_callbacks = {}
-        for hotkey_str, callback in hotkey_map.items():
-            # 解析快捷键
-            parsed = self.parse_hotkey(hotkey_str)
-            if parsed:
-                # 检查是否有效的快捷键（必须至少有一个修饰键和一个字符键）
-                has_modifier = any(pk[0] == 'modifier' for pk in parsed)
-                has_char = any(pk[0] == 'char' for pk in parsed)
+        # 解析快捷键字符串
+        parts = [p.strip().lower() for p in hotkey_str.split('+')]
 
-                if not (has_modifier and has_char):
-                    print(f"[WARNING] Invalid hotkey (missing modifier or char): {hotkey_str} -> {parsed}")
-                    continue
+        # 构建快捷键的目标键集合
+        target_keys = []
+        for part in parts:
+            if part == 'ctrl':
+                target_keys.append(('modifier', 'ctrl'))
+            elif part == 'alt':
+                target_keys.append(('modifier', 'alt'))
+            elif part == 'shift':
+                target_keys.append(('modifier', 'shift'))
+            elif part == 'win' or part == 'cmd' or part == 'meta':
+                target_keys.append(('modifier', 'cmd'))
+            elif len(part) == 1:
+                target_keys.append(('char', part.lower()))
 
-                self.hotkey_callbacks[hotkey_str] = {'callback': callback, 'parsed': parsed}
-                print(f"[DEBUG] Registered hotkey: {hotkey_str} -> {parsed}")
-
-    def on_press(self, key):
-        """Key press event"""
-        try:
-            # 规范化键对象
-            normalized = self.normalize_key(key)
-            if not normalized:
-                return
-
-            # 忽略已经按下的键（按键重复）
-            if normalized in self.pressed_keys:
-                return
-
-            self.pressed_keys.add(normalized)
-            print(f"[PRESS] {key} -> {normalized}")
-            print(f"  Pressed keys: {self.pressed_keys}")
-
-            # 检查是否有快捷键匹配
-            for hotkey_str, hotkey_data in self.hotkey_callbacks.items():
-                parsed_hotkey = hotkey_data['parsed']
-
-                # 检查是否满足快捷键组合（完整组合）
-                if self.pressed_keys == set(parsed_hotkey):
-                    print(f"[TRIGGERED] Hotkey: {hotkey_str}")
-                    callback = hotkey_data['callback']
-                    callback()
-                    return  # 只触发一次就返回
-
-        except Exception as e:
-            print(f"[ERROR] on_press error: {e}")
-            import traceback
-            traceback.print_exc()
-
-    def on_release(self, key):
-        """Key release事件"""
-        try:
-            normalized = self.normalize_key(key)
-            if normalized and normalized in self.pressed_keys:
-                self.pressed_keys.remove(normalized)
-                print(f"[RELEASE] {key} -> {normalized}")
-                print(f"  Pressed keys: {self.pressed_keys}")
-        except Exception as e:
-            print(f"[ERROR] on_release error: {e}")
+        # 检查当前按键是否匹配目标快捷键
+        return sorted(list(self.pressed_keys)) == sorted(target_keys)
 
     def start(self):
         """Start listening"""
-        self.listener = keyboard.Listener(
-            on_press=self.on_press,
-            on_release=self.on_release
-        )
+        self.listener = keyboard.Listener(on_press=self.on_press, on_release=self.on_release)
         self.listener.start()
-        print(f"[OK] Hotkey listener started... {len(self.hotkey_callbacks)} hotkeys registered")
+        print(f"[OK] Hotkey listener started... {len(self.hotkey_map)} hotkeys registered")
 
     def stop(self):
         """Stop listening"""

@@ -7,6 +7,9 @@ on:
     branches: [ master, main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -35,16 +38,25 @@ jobs:
         name: text-paster-windows
         path: dist/text-paster.exe
 
-    - name: Create Prebuilt Release
+    - name: Delete old prebuilt Release
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: softprops/action-gh-release@v1
+      uses: dev-drprasad/delete-tag-and-release@v0.3.2
       with:
-        files: dist/text-paster.exe
+        delete_release: true
         tag_name: prebuilt
-        name: Prebuilt Release
-        draft: false
-        prerelease: true
-        body: "Latest prebuilt version of text-paster.exe"
-        replace: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      continue-on-error: true
+
+    - name: Create Prebuilt Release
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: prebuilt
+        release_name: Prebuilt Release
+        body: "Latest prebuilt version of text-paster.exe"
+        draft: false
+        prerelease: true
+        files: dist/text-paster.exe

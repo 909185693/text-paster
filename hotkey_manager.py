@@ -139,25 +139,6 @@ class ClipboardManager:
     @staticmethod
     def paste_text(text: str):
         try:
-            controller = keyboard.Controller()
-
-            # First, release all digit keys to stop autorepeat
-            for digit in '0123456789':
-                try:
-                    controller.release(KeyCode.from_char(digit))
-                except:
-                    pass
-
-            # Small delay to ensure digit keys are released
-            time.sleep(0.05)
-
-            # Press Backspace once to delete the digit that was typed
-            controller.press(Key.backspace)
-            controller.release(Key.backspace)
-
-            # Delay to ensure backspace is processed
-            time.sleep(0.05)
-
             # Now set new content to clipboard
             pyperclip.copy(text)
 
@@ -165,10 +146,11 @@ class ClipboardManager:
             time.sleep(0.05)
 
             # Simulate Ctrl+V paste
-            # Note: User may still be holding Ctrl, so we just press V
-            # The system will detect Ctrl+V combination
+            controller = keyboard.Controller()
+            controller.press(Key.ctrl)
             controller.press(KeyCode.from_char('v'))
             controller.release(KeyCode.from_char('v'))
+            controller.release(Key.ctrl)
 
             # Wait for paste to complete
             time.sleep(0.1)

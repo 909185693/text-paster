@@ -19,8 +19,7 @@ class HotkeyManager:
         self.listener = None
         self.hotkey_callbacks = {}  # {hotkey_str: callback}
         self.pressed_keys = set()  # 当前按下的键
-        self.last_triggered_hotkey = None  # 上次触发的快捷键
-        self.last_triggered_time = 0  # 上次触发时间
+        self.triggered_hotkeys = set()  # 当前会话中已触发的快捷键
 
     def parse_hotkey(self, hotkey_str: str) -> list:
         """
@@ -100,27 +99,22 @@ class HotkeyManager:
             if not normalized:
                 return
 
+            # 忽略已经按下的键（按键重复）
+            if normalized in self.pressed_keys:
+                return
+
             self.pressed_keys.add(normalized)
             print(f"[PRESS] {key} -> {normalized}")
             print(f"  Pressed keys: {self.pressed_keys}")
-
-            # 只有在有修饰键按下时,才检查快捷键
-            # 防止单独按下主键时触发
-            has_modifier = any(k[0] == 'modifier' for k in self.pressed_keys)
-            if not has_modifier:
-                return
 
             # 检查是否有快捷键匹配
             for hotkey_str, hotkey_data in self.hotkey_callbacks.items():
                 parsed_hotkey = hotkey_data['parsed']
                 if self.pressed_keys == set(parsed_hotkey):
-                    # 检查是否是新的一次按下（与上次触发间隔超过0.3秒）
-                    current_time = time.time()
-                    if (self.last_triggered_hotkey != hotkey_str or
-                        current_time - self.last_triggered_time > 0.3):
+                    # 只在第一次按下时触发
+                    if hotkey_str not in self.triggered_hotkeys:
                         print(f"[TRIGGERED] Hotkey: {hotkey_str}")
-                        self.last_triggered_hotkey = hotkey_str
-                        self.last_triggered_time = current_time
+                        self.triggered_hotkeys.add(hotkey_str)
                         callback = hotkey_data['callback']
                         callback()
                     break
@@ -138,10 +132,10 @@ class HotkeyManager:
                 is_main_key = normalized[0] == 'char'  # 判断是否是主键(非修饰键)
                 self.pressed_keys.remove(normalized)
 
-                # 如果释放的是主键,重置触发状态
-                if is_main_key:
-                    self.last_triggered_hotkey = None
-                    print(f"[CLEARED] Triggered state after releasing main key")
+                # 当所有键都释放时,清除触发标记
+                if not self.pressed_keys:
+                    self.triggered_hotkeys.clear()
+                    print(f"[CLEARED] All keys released, trigger state reset")
 
                 print(f"[RELEASE] {key} -> {normalized}")
                 print(f"  Pressed keys: {self.pressed_keys}")

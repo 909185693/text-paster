@@ -18,6 +18,7 @@ class HotkeyManager:
         self.on_hotkey_press = on_hotkey_press
         self.hotkey_map = {}  # {hotkey_str: callback}
         self.pressed_keys = set()  # 当前按下的键
+        self.triggered_hotkeys = set()  # 本次按键周期已触发的快捷键
 
     def register_hotkeys(self, hotkey_map: dict):
         """
@@ -44,8 +45,11 @@ class HotkeyManager:
             # 检查所有已注册的快捷键
             for hotkey_str, callback in self.hotkey_map.items():
                 if self._check_hotkey(hotkey_str):
-                    # 直接触发,不检查是否已经触发过
-                    callback()
+                    # 检查是否已经触发过该快捷键
+                    if hotkey_str not in self.triggered_hotkeys:
+                        print(f"[TRIGGERED] Hotkey: {hotkey_str}")
+                        self.triggered_hotkeys.add(hotkey_str)
+                        callback()
                     break
 
         except Exception as e:
@@ -57,6 +61,11 @@ class HotkeyManager:
             normalized = self._normalize_key(key)
             if normalized and normalized in self.pressed_keys:
                 self.pressed_keys.remove(normalized)
+
+            # 当所有键都释放时,清空已触发的快捷键记录
+            if not self.pressed_keys:
+                self.triggered_hotkeys.clear()
+
         except Exception as e:
             print(f"[ERROR] on_release error: {e}")
 
@@ -155,15 +164,15 @@ class ClipboardManager:
                 except:
                     pass
 
-            # Small delay to ensure keys are released
-            time.sleep(0.05)
+            # 增加延迟,确保所有按键都完全释放
+            time.sleep(0.1)
 
             # Press Backspace once to delete the digit that was typed
             controller.press(Key.backspace)
             controller.release(Key.backspace)
 
-            # Delay to ensure backspace is processed
-            time.sleep(0.05)
+            # 增加延迟,确保 backspace 被正确处理
+            time.sleep(0.1)
 
             # Now set new content to clipboard
             pyperclip.copy(text)

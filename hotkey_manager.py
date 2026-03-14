@@ -130,7 +130,7 @@ class ClipboardManager:
     @staticmethod
     def paste_text(text: str):
         """
-        Paste text using Windows API to avoid key input interference
+        Paste text using keyboard simulation with backspace to clean up
         :param text: Text to paste
         """
         try:
@@ -140,36 +140,42 @@ class ClipboardManager:
             old_clipboard = None
 
         try:
-            # Set new content to clipboard
+            controller = keyboard.Controller()
+
+            # First, release all modifier keys and digit keys to stop autorepeat
+            controller.release(Key.ctrl)
+            controller.release(Key.alt)
+            controller.release(Key.shift)
+            controller.release(Key.cmd)
+
+            # Release digit keys to stop any autorepeat
+            for digit in '0123456789':
+                try:
+                    controller.release(KeyCode.from_char(digit))
+                except:
+                    pass
+
+            # Small delay to ensure keys are released
+            time.sleep(0.05)
+
+            # Press Backspace once to delete the digit that was typed
+            controller.press(Key.backspace)
+            controller.release(Key.backspace)
+
+            # Delay to ensure backspace is processed
+            time.sleep(0.05)
+
+            # Now set new content to clipboard
             pyperclip.copy(text)
 
             # Wait for clipboard to update
-            time.sleep(0.1)
+            time.sleep(0.05)
 
-            # Use Windows API to paste (send WM_PASTE message)
-            import ctypes
-            import win32gui
-            import win32con
-
-            # Get foreground window
-            hwnd = win32gui.GetForegroundWindow()
-
-            # Find the window that actually receives keyboard input
-            # (usually a child window like an edit control)
-            try:
-                # Get the thread of the foreground window
-                thread_id = ctypes.windll.user32.GetWindowThreadProcessId(hwnd, None)
-
-                # Get the window with focus
-                focused_hwnd = ctypes.windll.user32.GetFocus()
-
-                if focused_hwnd:
-                    hwnd = focused_hwnd
-            except:
-                pass
-
-            # Send WM_PASTE message
-            win32gui.PostMessage(hwnd, win32con.WM_PASTE, 0, 0)
+            # Simulate Ctrl+V paste
+            controller.press(Key.ctrl)
+            controller.press(KeyCode.from_char('v'))
+            controller.release(KeyCode.from_char('v'))
+            controller.release(Key.ctrl)
 
             # Wait for paste to complete
             time.sleep(0.1)
@@ -178,24 +184,5 @@ class ClipboardManager:
 
         except Exception as e:
             print(f"[ERROR] Paste failed: {e}")
-            # Fallback to keyboard simulation if Windows API fails
-            try:
-                controller = keyboard.Controller()
-
-                # Release all modifier keys
-                controller.release(Key.ctrl)
-                controller.release(Key.alt)
-                controller.release(Key.shift)
-                controller.release(Key.cmd)
-
-                time.sleep(0.05)
-
-                # Press and release Ctrl+V
-                controller.press(Key.ctrl)
-                controller.press(KeyCode.from_char('v'))
-                controller.release(KeyCode.from_char('v'))
-                controller.release(Key.ctrl)
-
-                time.sleep(0.1)
-            except:
-                pass
+            import traceback
+            traceback.print_exc()

@@ -49,7 +49,7 @@ class TextPasterGUI:
         add_frame.pack(fill=tk.X, pady=(0, 10))
 
         # 名称输入
-        ttk.Label(add_frame, text="名称:").grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
+        ttk.Label(add_frame, text="分类:").grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
         self.name_entry = ttk.Entry(add_frame, width=30)
         self.name_entry.grid(row=0, column=1, padx=(0, 10))
 
@@ -83,7 +83,7 @@ class TextPasterGUI:
 
         self.tree.heading("enabled", text="启用")
         self.tree.heading("hotkey", text="快捷键")
-        self.tree.heading("name", text="名称")
+        self.tree.heading("name", text="分类")
         self.tree.heading("text_preview", text="文本预览")
 
         self.tree.column("enabled", width=50, anchor=tk.CENTER)

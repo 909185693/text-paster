@@ -82,9 +82,6 @@ class TextPasterApp:
 
     def paste_text(self, hotkey: str, text: str):
         """粘贴文本"""
-        print(f"\n[TRIGGERED] Hotkey: {hotkey}")
-        print(f"[PASTING] Text: {text[:50]}{'...' if len(text) > 50 else ''}")
-
         # 更新 GUI 状态
         self.gui.status_var.set(f"Pasted: {text[:30]}...")
 

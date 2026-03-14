@@ -18,7 +18,6 @@ class HotkeyManager:
         self.on_hotkey_press = on_hotkey_press
         self.hotkey_map = {}  # {hotkey_str: callback}
         self.pressed_keys = set()  # 当前按下的键
-        self.triggered_hotkeys = set()  # 当前触发过的快捷键,防止重复触发
 
     def register_hotkeys(self, hotkey_map: dict):
         """
@@ -45,11 +44,8 @@ class HotkeyManager:
             # 检查所有已注册的快捷键
             for hotkey_str, callback in self.hotkey_map.items():
                 if self._check_hotkey(hotkey_str):
-                    # 防止重复触发同一个快捷键
-                    if hotkey_str not in self.triggered_hotkeys:
-                        self.triggered_hotkeys.add(hotkey_str)
-                        print(f"[TRIGGERED] Hotkey: {hotkey_str}")
-                        callback()
+                    # 直接触发,不检查是否已经触发过
+                    callback()
                     break
 
         except Exception as e:
@@ -61,10 +57,6 @@ class HotkeyManager:
             normalized = self._normalize_key(key)
             if normalized and normalized in self.pressed_keys:
                 self.pressed_keys.remove(normalized)
-
-                # 如果所有键都释放了,清空已触发记录
-                if not self.pressed_keys:
-                    self.triggered_hotkeys.clear()
         except Exception as e:
             print(f"[ERROR] on_release error: {e}")
 

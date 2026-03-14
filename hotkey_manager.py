@@ -121,13 +121,16 @@ class HotkeyManager:
             traceback.print_exc()
 
     def on_release(self, key):
-        """Key release event"""
+        """Key release事件"""
         try:
             normalized = self.normalize_key(key)
             if normalized and normalized in self.pressed_keys:
                 self.pressed_keys.remove(normalized)
-                # 清除已触发标记,允许下次再触发
-                self.triggered_hotkeys.clear()
+
+                # 只有当所有键都释放后,才清除触发标记
+                if not self.pressed_keys:
+                    self.triggered_hotkeys.clear()
+
                 print(f"[RELEASE] {key} -> {normalized}")
                 print(f"  Pressed keys: {self.pressed_keys}")
         except Exception as e:

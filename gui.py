@@ -191,30 +191,44 @@ class TextPasterGUI:
             return
 
         self.capturing_hotkey = True
+        self.captured_keys = []  # 记录捕获的键
+
+        # 显示捕获提示
         self.hotkey_entry.delete(0, tk.END)
         self.hotkey_entry.insert(0, "按下快捷键...")
         self.hotkey_entry.config(state=tk.DISABLED)
-
-        # 创建键盘监听器
-        self.pressed_keys = set()
+        self.status_var.set("请按下快捷键组合(如 Ctrl+Alt+1)...")
 
         def on_press(key):
             if not self.capturing_hotkey:
                 return False
 
-            self.pressed_keys.add(key)
+            # 获取键的规范化名称
+            key_name = None
 
-            # 检测按键组合
-            modifiers = []
-            for k in self.pressed_keys:
-                if k in (keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
-                    modifiers.append('ctrl')
-                elif k in (keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r):
-                    modifiers.append('alt')
-                elif k in (keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r):
-                    modifiers.append('shift')
-                elif hasattr(k, 'char') and k.char:
-                    pass  # 字符键会在 on_release 中处理
+            if key in (keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
+                key_name = 'ctrl'
+            elif key in (keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r):
+                key_name = 'alt'
+            elif key in (keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r):
+                key_name = 'shift'
+            elif hasattr(key, 'char') and key.char and key.char.isprintable():
+                key_name = key.char.lower()
+            elif hasattr(key, 'vk') and key.vk:
+                # 处理数字键 (VK 48-57: 0-9)
+                if 48 <= key.vk <= 57:
+                    key_name = str(key.vk - 48)
+
+            if key_name and key_name not in self.captured_keys:
+                self.captured_keys.append(key_name)
+
+            # 显示当前捕获的键
+            if self.captured_keys:
+                display_text = '+'.join(self.captured_keys)
+                self.hotkey_entry.config(state=tk.NORMAL)
+                self.hotkey_entry.delete(0, tk.END)
+                self.hotkey_entry.insert(0, display_text)
+                self.hotkey_entry.config(state=tk.DISABLED)
 
             return True
 
@@ -222,42 +236,24 @@ class TextPasterGUI:
             if not self.capturing_hotkey:
                 return False
 
-            self.pressed_keys.discard(key)
+            # 当所有键都释放时,完成捕获
+            # 简单判断:如果捕获了多个键,假设是完整组合
+            if len(self.captured_keys) >= 2:
+                # 延迟一下再停止,确保捕获完整
+                import threading
+                def finish_capture():
+                    import time
+                    time.sleep(0.1)
+                    if self.capturing_hotkey:
+                        self.capturing_hotkey = False
+                        hotkey_str = '+'.join(self.captured_keys)
+                        self.hotkey_entry.config(state=tk.NORMAL)
+                        self.hotkey_entry.delete(0, tk.END)
+                        self.hotkey_entry.insert(0, hotkey_str)
+                        self.status_var.set(f"已捕获快捷键: {hotkey_str}")
 
-            # 构建快捷键字符串
-            hotkey_parts = []
-            for k in self.pressed_keys:
-                if k in (keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
-                    hotkey_parts.append('ctrl')
-                elif k in (keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r):
-                    hotkey_parts.append('alt')
-                elif k in (keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r):
-                    hotkey_parts.append('shift')
-                elif hasattr(k, 'char') and k.char:
-                    pass
-
-            # 检查是否所有修饰键都已释放,只留下一个主键
-            remaining_keys = []
-            for k in self.pressed_keys:
-                if k not in (keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r,
-                            keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r,
-                            keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r):
-                    remaining_keys.append(k)
-
-            # 如果释放的是修饰键且还有其他键,继续等待
-            if len(self.pressed_keys) > 0:
-                return True
-
-            # 如果释放的是最后一个键(非修饰键),完成捕获
-            if hasattr(key, 'char') and key.char:
-                char = key.char.lower()
-                # 构建完整的快捷键
-                hotkey_str = '+'.join(modifiers + [char])
-                self.hotkey_entry.config(state=tk.NORMAL)
-                self.hotkey_entry.delete(0, tk.END)
-                self.hotkey_entry.insert(0, hotkey_str)
-                self.capturing_hotkey = False
-                self.status_var.set(f"已捕获快捷键: {hotkey_str}")
+                thread = threading.Thread(target=finish_capture, daemon=True)
+                thread.start()
                 return False
 
             return True
@@ -265,7 +261,6 @@ class TextPasterGUI:
         # 启动监听器
         self.listener = keyboard.Listener(on_press=on_press, on_release=on_release)
         self.listener.start()
-        self.status_var.set("请按下要设置的快捷键组合...")
 
     def add_item(self):
         """添加条目"""
